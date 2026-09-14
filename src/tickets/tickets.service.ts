@@ -292,8 +292,10 @@ export class TicketsService {
     const startOfMonthExpr = `DATE_SUB(CURDATE(), INTERVAL (DAYOFMONTH(CURDATE()) - 1) DAY)`;
     const endOfMonthExpr = `DATE_ADD(DATE_SUB(CURDATE(), INTERVAL (DAYOFMONTH(CURDATE()) - 1) DAY), INTERVAL 1 MONTH)`;
 
-    if (!startDate && !endDate) {
-      // Default to current month
+    if (startDate === 'all') {
+      // Bypass date filter completely
+    } else if (!startDate && !endDate && (!name || name.trim() === '')) {
+      // Default to current month only if no search term and no specific dates are provided
       query.andWhere('ticket.created_at >= DATE_FORMAT(NOW(), :startOfMonth)', {
         startOfMonth: '%Y-%m-01 00:00:00',
       });
@@ -302,26 +304,25 @@ export class TicketsService {
       });
     } else {
       // Apply provided startDate and endDate if available
-      if (status !== 'disbursed' && startDate) {
-        startDate = `${startDate.substring(0, 10)} 00:00:00`;
-        query.andWhere('ticket.created_at >= :startDate', { startDate });
+      if (status !== 'disbursed' && startDate && startDate !== 'all') {
+        const parsedStartDate = `${startDate.substring(0, 10)} 00:00:00`;
+        query.andWhere('ticket.created_at >= :startDate', { startDate: parsedStartDate });
       }
-      if (status !== 'disbursed' && endDate) {
-        endDate = `${endDate.substring(0, 10)} 23:59:59`;
-        query.andWhere('ticket.created_at <= :endDate', { endDate });
+      if (status !== 'disbursed' && endDate && endDate !== 'all') {
+        const parsedEndDate = `${endDate.substring(0, 10)} 23:59:59`;
+        query.andWhere('ticket.created_at <= :endDate', { endDate: parsedEndDate });
       }
     }
 
-    if (status === 'disbursed' && startDate && endDate) {
-      if (startDate) {
-        startDate = `${startDate.substring(0, 10)} 00:00:00`;
-        query.andWhere('ticket.disbursed_at >= :startDate', { startDate });
-      }
-      if (endDate) {
-        endDate = `${endDate.substring(0, 10)} 23:59:59`;
-        query.andWhere('ticket.disbursed_at <= :endDate', { endDate });
-      }
-    } else if (status === 'disbursed' && !startDate && !endDate) {
+    if (startDate === 'all') {
+      // Bypass date filter completely for disbursed status too
+    } else if (status === 'disbursed' && startDate && endDate && startDate !== 'all' && endDate !== 'all') {
+      const parsedStartDate = `${startDate.substring(0, 10)} 00:00:00`;
+      query.andWhere('ticket.disbursed_at >= :startDate', { startDate: parsedStartDate });
+      const parsedEndDate = `${endDate.substring(0, 10)} 23:59:59`;
+      query.andWhere('ticket.disbursed_at <= :endDate', { endDate: parsedEndDate });
+    } else if (status === 'disbursed' && !startDate && !endDate && (!name || name.trim() === '')) {
+      // Default to current month only if no search term and no specific dates are provided
       query.andWhere('ticket.disbursed_at >= DATE_FORMAT(NOW(), :startOfMonth)', {
         startOfMonth: '%Y-%m-01 00:00:00',
       });
