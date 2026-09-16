@@ -341,12 +341,12 @@ export class TicketsService {
     }
 
     const results = tickets.map((ticket) => {
-      const { application } = ticket;
-      const { customer, loanTracking } = application;
+      const application = ticket.application;
+      const { customer, loanTracking } = application || {};
 
-      const customerProfileImages = (customer.customerDocuments ?? [])
-        .filter((doc) => doc.type === 'profile photo')
-        .map((doc) => doc.document_url);
+      const customerProfileImages = (customer?.customerDocuments ?? [])
+        .filter((doc) => doc?.type === 'profile photo')
+        .map((doc) => doc?.document_url);
       return {
         ticketId: ticket.id,
         ticketStatus: ticket.status,
@@ -357,24 +357,24 @@ export class TicketsService {
         approvedAt: ticket.approved_at,
         approvedAmount: ticket.approved_amount,
         approvedCashbackAmount: ticket.cashback_amount,
-        applicationAmount: application.amount,
-        loanCategory: application.loan_category,
-        loanType: application.loan_type,
-        leadType: application.lead_type,
-        applicationTenure: application.tenure,
-        applicationDate: application.application_date,
-        applicationId: application.id,
-        applicationSource: application.source,
-        appliedBy: application.applied_by ?? null,
+        applicationAmount: application?.amount ?? 'No Amount',
+        loanCategory: application?.loan_category ?? 'No Category',
+        loanType: application?.loan_type ?? 'Not Specified',
+        leadType: application?.lead_type ?? '',
+        applicationTenure: application?.tenure ?? 'No Tenure',
+        applicationDate: application?.application_date ?? 'No Date',
+        applicationId: application?.id ?? '',
+        applicationSource: application?.source ?? 'No Source',
+        appliedBy: application?.applied_by ?? null,
         customerId: customer?.id ?? 'No ID',
         customerName: customer?.name ?? 'No Name',
         customerEmail: customer?.email ?? 'No Email',
         customerContact: customer?.contact ?? 'No Contact',
         customerProfileImage: customerProfileImages.length > 0 ? customerProfileImages : 'No image available',
-        customerLocation: customer.info?.city ?? 'No location available',
-        customerState: customer.info?.state ?? 'No location available',
-        loanStatus: loanTracking[0]?.status ?? 'No status available',
-        applicationProvider: application.provider ?? 'No provider available',
+        customerLocation: customer?.info?.city ?? 'No location available',
+        customerState: customer?.info?.state ?? 'No location available',
+        loanStatus: loanTracking?.[0]?.status ?? 'No status available',
+        applicationProvider: application?.provider ?? 'No provider available',
         case_type: ticket.case_type ?? '',
         fixed_commission_percentage: ticket.fixed_commission_percentage ?? null,
         companyId: ticket.companyId,

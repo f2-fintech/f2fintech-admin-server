@@ -63,30 +63,39 @@ export class TicketsController {
     @Query('endDate') endDate: string = '',
     @Query('teamScope') teamScope: string = 'false',
     @Query('designation') designation: string = '',
-    @Headers('Companyid') companyIdString?: string
+    @Headers('Companyid') companyIdString?: string,
+    @Query('companyId') queryCompanyId?: string
   ): Promise<any> {
-    const companyId = companyIdString && !isNaN(Number(companyIdString)) ? Number(companyIdString) : null;
-    
-    let teamUserIds: number[] | undefined = undefined;
-    if (teamScope === 'true' && userId && designation) {
-      teamUserIds = await this.teamsService.getMemberIdsForTicketFilter(Number(userId), designation);
-    }
+    try {
+      const rawCompanyId = companyIdString || queryCompanyId;
+      const companyId = rawCompanyId && !isNaN(Number(rawCompanyId)) ? Number(rawCompanyId) : null;
+      
+      let teamUserIds: number[] | undefined = undefined;
+      if (teamScope === 'true' && userId && designation) {
+        teamUserIds = await this.teamsService.getMemberIdsForTicketFilter(Number(userId), designation);
+      }
 
-    const paginatedTickets = await this.ticketsService.findAllTickets(
-      page,
-      limit,
-      userId,
-      aggregatorMemberId,
-      appliedBy,
-      status,
-      provider,
-      name,
-      startDate,
-      endDate,
-      companyId,
-      teamUserIds,
-    );
-    return ResponseFormatter.success(200, 'Tickets Retrieved Successfully', paginatedTickets);
+      const paginatedTickets = await this.ticketsService.findAllTickets(
+        page,
+        limit,
+        userId,
+        aggregatorMemberId,
+        appliedBy,
+        status,
+        provider,
+        name,
+        startDate,
+        endDate,
+        companyId,
+        teamUserIds,
+      );
+      return ResponseFormatter.success(200, 'Tickets Retrieved Successfully', paginatedTickets);
+    } catch (error) {
+      return ResponseFormatter.error(
+        error.status || 500,
+        error.message || 'Internal server error',
+      );
+    }
   }
 
   @Get('get-ticket/:ticketId')
