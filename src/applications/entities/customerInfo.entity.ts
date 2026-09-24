@@ -67,6 +67,12 @@ export class CustomerInfo {
     @Column({ type: 'varchar', length: 255, nullable: true })
     co_applicant_mother_name: string;
 
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    co_applicant_relation: string;
+
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    co_applicant_employment_type: string;
+
     @Column({ type: 'int', nullable: true })
     salary: number;
 
@@ -84,6 +90,9 @@ export class CustomerInfo {
 
     @Column({ type: 'varchar', length: 100, nullable: true })
     company: string;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    company_official_email: string;
 
     @Column({ type: 'varchar', length: 100, nullable: true })
     gst_number: string;

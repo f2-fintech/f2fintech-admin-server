@@ -14,7 +14,9 @@ export enum Loan_type {
   EDUCATION_LOAN = 'education loan',
   LAP = 'lap',
   MACHINERY_LOAN = 'machinery loan',
-  AUTO_LOAN = 'auto loan'
+  AUTO_LOAN = 'auto loan',
+  DOCTOR = 'doctor',
+  CA_CS_CMA = 'ca_cs_cma'
 }
 export enum lead_type {
   NULL = 'null',
@@ -57,6 +59,14 @@ export class Application {
     enum: Loan_type,
   })
   loan_type: Loan_type;
+
+  @Column({
+    name: 'business_entity_type',
+    type: 'enum',
+    enum: ['sole_proprietorship', 'private_limited', 'llp', 'huf', 'partnership'],
+    nullable: true,
+  })
+  business_entity_type: 'sole_proprietorship' | 'private_limited' | 'llp' | 'huf' | 'partnership';
 
   @Column({
     type: 'enum',
