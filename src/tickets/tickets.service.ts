@@ -13,6 +13,7 @@ import { TicketActivity } from 'src/ticket_activities/entities/ticket_activities
 import { LoanTracking } from 'src/applications/entities/loanTracking.entity';
 import { Application } from 'src/applications/entities/applications.entity';
 import { TicketArchive } from './entities/ticketArchive.entity';
+import { User } from 'src/users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TeamsService } from 'src/teams/teams.service';
 
@@ -751,29 +752,6 @@ export class TicketsService {
       throw new Error('Ticket not found');
     }
 
-    // Remove only the related entities but NOT the application/customer
-    // const ticketHistory = await this.ticketHistoryRepository.find( { where: { ticket_id: ticketId } } );
-    // const ticketLog = await this.ticketLogRepository.find( { where: { ticket_id: ticketId } } );
-    // const ticketActivity = await this.ticketActivityRepository.find( { where: { ticket_id: ticketId } } );
-    // const loanTracking = await this.loanTrackingRepository.find( { where: { customer_application_id: ticket.customer_application_id } } );
-
-    // if ( ticketHistory.length )
-    // {
-    //   await this.ticketHistoryRepository.remove( ticketHistory );
-    // }
-    // if ( ticketLog.length )
-    // {
-    //   await this.ticketLogRepository.remove( ticketLog );
-    // }
-    // if ( ticketActivity.length )
-    // {
-    //   await this.ticketActivityRepository.remove( ticketActivity );
-    // }
-    // if ( loanTracking.length )
-    // {
-    //   await this.loanTrackingRepository.remove( loanTracking );
-    // }
-
     // Move ticket to ticket_archive WITHOUT modifying its structure
     const archivedTicket = this.ticketArchiveRepository.create({
       ...ticket,
@@ -783,30 +761,110 @@ export class TicketsService {
       archived_by: archivedByUserId,
     });
 
-    await this.ticketArchiveRepository.save(archivedTicket);
+    const queryRunner = this.ticketRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Remove only the ticket, NOT the application
-    await this.ticketRepository.remove(ticket);
+    try {
+      // 1. Fetch the archiving admin's name for history audit
+      let archivedByName = 'Admin';
+      if (archivedByUserId) {
+        const user = await queryRunner.manager.findOne(User, {
+          where: { id: archivedByUserId },
+          select: ['id', 'username'],
+        });
+        if (user?.username) {
+          archivedByName = user.username;
+        }
+      }
 
-    // DON'T remove the customer application
-    // await this.customerApplicationRepository.remove( customerApplication );
+      // 2. Record deletion in ticket_history so the full audit trail is preserved
+      await queryRunner.manager.save(TicketHistory, {
+        ticket_id: ticket.id,
+        company_id: ticket.companyId,
+        action: `${archivedByName} archived & deleted ticket. Reason: ${reason}`,
+        created_at: new Date(),
+      });
+
+      // 3. Save to ticket_archive table
+      await queryRunner.manager.save(TicketArchive, archivedTicket);
+
+      // 4. Temporarily disable foreign key checks on this connection
+      // so child records (ticket_history, ticket_log, ticket-activities, ticket_voice_note, notification)
+      // are preserved in the database for full restoration without triggering FK constraint errors
+      await queryRunner.query('SET FOREIGN_KEY_CHECKS=0');
+
+      // 5. Delete active ticket record
+      await queryRunner.manager.delete(Ticket, { id: ticket.id });
+
+      // 6. Re-enable foreign key checks
+      await queryRunner.query('SET FOREIGN_KEY_CHECKS=1');
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      try {
+        await queryRunner.query('SET FOREIGN_KEY_CHECKS=1');
+      } catch (_) {}
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Restore Original ticket from archive
-  async restoreOriginalTicket(archiveId: number): Promise<void> {
+  async restoreOriginalTicket(archiveId: number, restoredByUserId?: number): Promise<void> {
     const archivedTicket = await this.ticketArchiveRepository.findOneBy({ id: archiveId });
     if (!archivedTicket) {
       throw new Error('Archived ticket not found');
     }
 
-    // Create a new ticket from the archived data
+    const { id, reason_to_delete, archived_at, archived_by, original_ticket_id, ...ticketData } = archivedTicket;
+
+    // Create a restored ticket preserving original_ticket_id as primary key
+    // so that preserved child records (history, logs, activities) reconnect seamlessly
     const restoredTicket = this.ticketRepository.create({
-      ...archivedTicket,
+      ...ticketData,
+      id: original_ticket_id,
       updated_at: new Date(),
       due_date: archivedTicket.due_date,
     });
-    await this.ticketRepository.save(restoredTicket);
-    await this.ticketArchiveRepository.delete(archiveId);
+
+    const queryRunner = this.ticketRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Fetch the restoring user's name for history audit
+      let restoredByName = 'Admin';
+      if (restoredByUserId) {
+        const user = await queryRunner.manager.findOne(User, {
+          where: { id: restoredByUserId },
+          select: ['id', 'username'],
+        });
+        if (user?.username) {
+          restoredByName = user.username;
+        }
+      }
+
+      await queryRunner.manager.save(Ticket, restoredTicket);
+      await queryRunner.manager.delete(TicketArchive, { id: archiveId });
+
+      // Record restoration in ticket_history for complete audit trail
+      await queryRunner.manager.save(TicketHistory, {
+        ticket_id: original_ticket_id,
+        company_id: restoredTicket.companyId,
+        action: `${restoredByName} restored ticket from archive`,
+        created_at: new Date(),
+      });
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAllArchivedTickets(
@@ -819,6 +877,7 @@ export class TicketsService {
     endDate?: string,
     search?: string,
     companyId?: number,
+    userId?: number,
   ): Promise<PaginationResult> {
     page = Number(page) || 1;
     limit = Number(limit) || 10;
@@ -837,6 +896,10 @@ export class TicketsService {
 
     if (companyId) {
       query.andWhere('archive.companyId = :companyId', { companyId });
+    }
+
+    if (userId) {
+      query.andWhere('archive.archived_by = :userId', { userId });
     }
 
     if (status && status !== 'all' && status.trim() !== '') {

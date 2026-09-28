@@ -188,9 +188,13 @@ export class TicketsController {
   }
 
   @Post('restore-original-ticket/:archiveId')
-  async restoreOriginalTicket(@Param('archiveId') archiveId: number) {
+  async restoreOriginalTicket(
+    @Param('archiveId') archiveId: number,
+    @Body() body: { restoredBy?: number },
+  ) {
     try {
-      const newTicket = await this.ticketsService.restoreOriginalTicket(archiveId);
+      const restoredBy = body?.restoredBy;
+      const newTicket = await this.ticketsService.restoreOriginalTicket(archiveId, restoredBy);
       return ResponseFormatter.success(
         201,
         'Ticket restored successfully',
@@ -215,6 +219,7 @@ export class TicketsController {
     @Query('startDate') startDate: string = '',
     @Query('endDate') endDate: string = '',
     @Query('search') search: string = '',
+    @Query('userId') userId?: number,
     @Headers('Companyid') companyIdString?: string
   ): Promise<any> {
     try {
@@ -230,6 +235,7 @@ export class TicketsController {
         endDate,
         search,
         companyId,
+        userId ? Number(userId) : undefined,
       );
       return ResponseFormatter.success(
         200,
