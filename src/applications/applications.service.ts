@@ -147,12 +147,12 @@ export class ApplicationsService {
         loanType: application.loan_type,
         leadType: application.lead_type,
         loanStatus: loanTracking[0]?.status ?? 'No status available',
-        customerDesignation: customer.info?.employment_type ?? 'Not available',
-        customerProfileImage: (customer.customerDocuments ?? [])
+        customerDesignation: customer?.info?.employment_type ?? 'Not available',
+        customerProfileImage: (customer?.customerDocuments ?? [])
           ?.filter(doc => doc.type === 'profile photo')
           .map(doc => doc.document_url) ?? ['No image available'],
-        customerLocation: customer.info?.city ?? 'No location available',
-        customerState: customer.info?.state ?? 'No location available',
+        customerLocation: customer?.info?.city ?? 'No location available',
+        customerState: customer?.info?.state ?? 'No location available',
         companyId: application.company_id ?? 'No company',
         existingLoans: application.existing_loans,
         source: application.source,

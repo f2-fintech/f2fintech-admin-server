@@ -257,6 +257,15 @@ export class CompaniesService {
         return await this.companyRepository.save(company);
     }
 
+    async deactivateByCompanyId(companyId: number): Promise<Company> {
+        const company = await this.companyRepository.findOne({ where: { companyId } });
+        if (!company) {
+            throw new NotFoundException(`Company with companyId ${companyId} not found`);
+        }
+        company.isActive = false;
+        return await this.companyRepository.save(company);
+    }
+
     async activateCompany(companyId: number): Promise<Company> {
         const company = await this.findOne(companyId);
         company.isActive = true;

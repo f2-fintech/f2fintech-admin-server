@@ -198,6 +198,16 @@ export class CompaniesController {
         }
     }
 
+    @Patch( 'by-company-id/:companyId/deactivate' )
+    async deactivateByCompanyId ( @Param( 'companyId' ) companyId: number ) {
+        try {
+            const company = await this.companiesService.deactivateByCompanyId( +companyId );
+            return ResponseFormatter.success( 200, 'Company deactivated successfully', company );
+        } catch ( error ) {
+            return ResponseFormatter.error( error.status || 500, error.message || 'Internal server error' );
+        }
+    }
+
     @Patch( ':id/activate' )
     async activateCompany ( @Param( 'id' ) id: number ) {
         try
