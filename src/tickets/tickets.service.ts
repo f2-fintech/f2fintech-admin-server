@@ -53,6 +53,7 @@ export interface TicketResponse {
   case_type: string;
   fixed_commission_percentage: number | string;
   companyId: number;
+  companyName?: string;
   applicationSource: string;
   source?: string;
   due_date: Date | string | null;
@@ -105,7 +106,7 @@ export class TicketsService {
     try {
       // Fetch the application first to check its exists and whether it's already picked
       const appResult = await this.customerApplicationRepository.createQueryBuilder('app')
-        .select(['app.id', 'app.case_type', 'app.is_picked'])
+        .select(['app.id', 'app.case_type', 'app.is_picked', 'app.company_id'])
         .where('app.id = :id', { id: createTicketDto.customer_application_id })
         .getOne();
 
@@ -124,7 +125,10 @@ export class TicketsService {
       const newTicket = new Ticket();
       Object.assign(newTicket, createTicketDto);
 
-      if (companyId !== null && companyId !== undefined) {
+      // Inherit the company_id from the application if available, else fallback to passed companyId
+      if (appResult?.company_id) {
+        newTicket.companyId = appResult.company_id;
+      } else if (companyId !== null && companyId !== undefined) {
         newTicket.companyId = companyId;
       }
 
@@ -189,11 +193,13 @@ export class TicketsService {
         'loanTracking',
         'loanTracking.customer_application_id = application.id'   // explicit condition
       )
+      .leftJoinAndSelect('ticket.company', 'company')
+      .leftJoinAndSelect('application.company', 'appCompany')
       .skip(skip)
       .take(limit)
       .orderBy('ticket.created_at', 'DESC');
 
-    if (companyId) {
+    if (companyId && Number(companyId) !== 101) {
       query.andWhere('ticket.companyId = :companyId', { companyId });
     }
 
@@ -378,7 +384,8 @@ export class TicketsService {
         applicationProvider: application?.provider ?? 'No provider available',
         case_type: ticket.case_type ?? '',
         fixed_commission_percentage: ticket.fixed_commission_percentage ?? null,
-        companyId: ticket.companyId,
+        companyId: ticket.companyId ?? application?.company_id ?? null,
+        companyName: ticket.company?.name ?? application?.company?.name ?? 'Financial Freedom',
       };
     });
 
@@ -418,6 +425,8 @@ export class TicketsService {
         'loanTracking',
         'loanTracking.customer_application_id = application.id'   // explicit condition
       )
+      .leftJoinAndSelect('ticket.company', 'company')
+      .leftJoinAndSelect('application.company', 'appCompany')
       .where('ticket.id = :ticketId', { ticketId })
       .getOne();
 
@@ -473,7 +482,8 @@ export class TicketsService {
       managerName: applicantAndManager.managerName,
       case_type: ticket.case_type ?? '',
       fixed_commission_percentage: ticket.fixed_commission_percentage ?? null,
-      companyId: ticket.companyId,
+      companyId: ticket.companyId ?? ticket.application?.company_id ?? null,
+      companyName: ticket.company?.name ?? ticket.application?.company?.name ?? 'Financial Freedom',
       due_date: ticket.due_date ?? null,
       co_applicant_name: ticket.application?.customer?.info?.co_applicant_name ?? '',
       co_applicant_contact: ticket.application?.customer?.info?.co_applicant_contact ?? '',
@@ -889,12 +899,14 @@ export class TicketsService {
       .leftJoinAndSelect('customer.info', 'info')
       .leftJoinAndSelect('customer.customerDocuments', 'documents')
       .leftJoinAndSelect('application.loanTracking', 'loanTracking')
+      .leftJoinAndSelect('archive.company', 'company')
+      .leftJoinAndSelect('application.company', 'appCompany')
       .skip(skip)
       .take(limit)
       .orderBy('archive.archived_at', 'DESC')
       .where('1 = 1');
 
-    if (companyId) {
+    if (companyId && Number(companyId) !== 101) {
       query.andWhere('archive.companyId = :companyId', { companyId });
     }
 
@@ -982,7 +994,8 @@ export class TicketsService {
         loanStatus: loanTracking?.[0]?.status ?? 'No status available',
         applicationProvider: application?.provider ?? 'No provider available',
         reason: archive?.reason_to_delete,
-        companyId: archive.companyId,
+        companyId: archive.companyId ?? application?.company_id ?? null,
+        companyName: archive.company?.name ?? application?.company?.name ?? 'Financial Freedom',
         cashback_amount: archive.cashback_amount ?? null,
         fixed_commission_percentage: archive.fixed_commission_percentage ?? null,
         case_type: archive.case_type ?? '',

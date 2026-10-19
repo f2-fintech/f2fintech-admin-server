@@ -34,7 +34,7 @@ export class TicketLogService {
       .createQueryBuilder('ticketLog')
       .where('ticketLog.ticket_id = :ticketId', { ticketId });
 
-    if (parsedCompanyId) {
+    if (parsedCompanyId && parsedCompanyId !== 101) {
       query.andWhere('ticketLog.company_id = :companyId', {
         companyId: parsedCompanyId
       });

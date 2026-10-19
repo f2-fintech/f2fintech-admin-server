@@ -42,9 +42,9 @@ export class ActivitiesService {
     // Build where conditions
     const whereConditions: any = { ticket_id: ticketId };
 
-    // If companyId is provided, filter by it
+    // If companyId is provided, filter by it (except company 101 which can access all)
     // If companyId is null (super admin), return all
-    if (companyId !== undefined && companyId !== null) {
+    if (companyId !== undefined && companyId !== null && Number(companyId) !== 101) {
       whereConditions.company_id = companyId;
     }
 
@@ -65,7 +65,7 @@ export class ActivitiesService {
   ): Promise<TicketActivity> {
     const whereConditions: any = { ticket_id };
 
-    if (companyId !== undefined && companyId !== null) {
+    if (companyId !== undefined && companyId !== null && Number(companyId) !== 101) {
       whereConditions.company_id = companyId;
     }
 
@@ -98,8 +98,8 @@ export class ActivitiesService {
     // Build where conditions
     const whereConditions: any = { ticket_id, id };
 
-    // If companyId is provided, also filter by company_id
-    if (companyId !== undefined && companyId !== null) {
+    // If companyId is provided, also filter by company_id (except for company 101)
+    if (companyId !== undefined && companyId !== null && Number(companyId) !== 101) {
       whereConditions.company_id = companyId;
     }
 
@@ -136,8 +136,8 @@ export class ActivitiesService {
     // Build where conditions
     const whereConditions: any = { id };
 
-    // If companyId is provided, also filter by company_id
-    if (companyId !== undefined && companyId !== null) {
+    // If companyId is provided, also filter by company_id (except for company 101)
+    if (companyId !== undefined && companyId !== null && Number(companyId) !== 101) {
       whereConditions.company_id = companyId;
     }
 

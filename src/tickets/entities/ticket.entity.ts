@@ -38,7 +38,7 @@ export class Ticket {
   companyId: number;
 
   @ManyToOne(() => Company, (company) => company.tickets)
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({ name: 'company_id', referencedColumnName: 'companyId' })
   company: Company;
 
   // Define customer_application_id as a foreign key with an index for fast lookups

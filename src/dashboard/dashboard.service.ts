@@ -26,8 +26,8 @@ export class DashboardService {
     const where: any = {};
     const qb = this.ticketRepository.createQueryBuilder('ticket');
 
-    // Add companyId filter if provided
-    if (companyId) {
+    // Add companyId filter if provided (except company 101 which sees all)
+    if (companyId && Number(companyId) !== 101) {
       qb.andWhere('ticket.company_id = :companyId', { companyId });
     }
 
@@ -49,8 +49,8 @@ export class DashboardService {
           qb.leftJoinAndSelect('users', 'user', 'user.id = ticket.user_id')
             .where('user.role = :role', { role: user_info.role });
 
-          // Add company filter for other roles if companyId is provided
-          if (companyId) {
+          // Add company filter for other roles if companyId is provided (except company 101)
+          if (companyId && Number(companyId) !== 101) {
             qb.andWhere('ticket.company_id = :companyId', { companyId });
           }
         }
@@ -132,7 +132,7 @@ export class DashboardService {
           .createQueryBuilder('ticket')
           .where('ticket.status = :status', { status })
           .andWhere('ticket.forwarded_to IS NOT NULL')
-          .andWhere(companyId ? 'ticket.company_id = :companyId' : '1=1', companyId ? { companyId } : {});
+          .andWhere(companyId && Number(companyId) !== 101 ? 'ticket.company_id = :companyId' : '1=1', companyId && Number(companyId) !== 101 ? { companyId } : {});
 
         if (Array.isArray(id)) {
           fqb.andWhere('ticket.user_id IN (:...ids)', { ids: id });
@@ -192,8 +192,8 @@ export class DashboardService {
     qb.select('ticket.status', 'status');
     qb.addSelect('COUNT(ticket.id)', 'count');
 
-    // Add companyId filter if provided
-    if (companyId) {
+    // Add companyId filter if provided (except company 101)
+    if (companyId && Number(companyId) !== 101) {
       qb.andWhere('ticket.company_id = :companyId', { companyId });
     }
 
@@ -293,8 +293,8 @@ export class DashboardService {
         created_at: Between(startOfMonth, endOfMonth),
       };
 
-      // Add company filter if companyId is provided
-      if (companyId) {
+      // Add company filter if companyId is provided (except company 101)
+      if (companyId && Number(companyId) !== 101) {
         where.companyId = companyId;
       }
 
@@ -321,8 +321,8 @@ export class DashboardService {
         disbursed_at: Between(startOfMonth, endOfMonth),
       };
 
-      // Add company filter if companyId is provided
-      if (companyId) {
+      // Add company filter if companyId is provided (except company 101)
+      if (companyId && Number(companyId) !== 101) {
         where.companyId = companyId;
       }
 
