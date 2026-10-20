@@ -113,7 +113,7 @@ export class TicketArchive {
     companyId: number;
 
     @ManyToOne( () => Company )
-    @JoinColumn( { name: 'company_id' } )
+    @JoinColumn( { name: 'company_id', referencedColumnName: 'companyId' } )
     company: Company;
 
     @Column()

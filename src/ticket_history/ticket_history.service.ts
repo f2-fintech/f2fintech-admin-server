@@ -31,8 +31,8 @@ export class TicketHistoryService {
       .where('ticket_history.ticket_id = :ticketId', { ticketId })
       .orderBy('ticket_history.created_at', 'DESC');
 
-    // Apply company filter if companyId is provided
-    if (companyId) {
+    // Apply company filter if companyId is provided (except for company 101)
+    if (companyId && Number(companyId) !== 101) {
       query.andWhere('ticket_history.company_id = :companyId', { companyId });
     }
 

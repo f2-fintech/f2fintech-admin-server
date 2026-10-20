@@ -18,7 +18,7 @@ export class NotificationsService {
   async getAdminNotifications(companyId: number, limit: number = 20, page: number = 1) {
     const skip = (page - 1) * limit;
     const whereClause: any = { type: 'ticket' };
-    if (companyId) {
+    if (companyId && Number(companyId) !== 101) {
       whereClause.company_id = companyId;
     }
 

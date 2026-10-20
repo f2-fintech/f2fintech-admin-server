@@ -62,9 +62,10 @@ export class ApplicationsService {
         'loanTracking',
         'loanTracking.customer_application_id = application.id'   // explicit condition
       )
+      .leftJoinAndSelect('application.company', 'company')
       .where('application.is_picked = :isPicked', { isPicked: 0 });
 
-    if (companyId) {
+    if (companyId && Number(companyId) !== 101) {
       queryBuilder.andWhere('application.company_id = :company_id', { company_id: Number(companyId) });
     }
 
@@ -154,6 +155,7 @@ export class ApplicationsService {
         customerLocation: customer?.info?.city ?? 'No location available',
         customerState: customer?.info?.state ?? 'No location available',
         companyId: application.company_id ?? 'No company',
+        companyName: application.company?.name ?? 'Financial Freedom',
         existingLoans: application.existing_loans,
         source: application.source,
         appliedBy: application.applied_by ?? null,
@@ -178,7 +180,7 @@ export class ApplicationsService {
 
   async getApplicationsCount(month?: string, year?: number, date?: string, company_id?: string, appliedBy?: string): Promise<number> {
     const whereCondition: any = {};
-    if (company_id) {
+    if (company_id && Number(company_id) !== 101) {
       whereCondition.company_id = Number(company_id);
     }
 
@@ -222,7 +224,7 @@ export class ApplicationsService {
 
   async getNewApplicationsCount(month?: string, year?: number, date?: string, company_id?: string, appliedBy?: string): Promise<any> {
     const whereCondition: any = { is_picked: 0 };
-    if (company_id) {
+    if (company_id && Number(company_id) !== 101) {
       whereCondition.company_id = Number(company_id);
     }
 
@@ -274,7 +276,7 @@ export class ApplicationsService {
 
   async getNewApplicationsList(limit: number = 10, company_id?: string): Promise<any[]> {
     const whereCondition: any = { is_picked: 0 };
-    if (company_id) {
+    if (company_id && Number(company_id) !== 101) {
       whereCondition.company_id = Number(company_id);
     }
 
@@ -282,7 +284,7 @@ export class ApplicationsService {
       where: whereCondition,
       order: { application_date: 'DESC' },
       take: limit,
-      relations: ['customer'],
+      relations: ['customer', 'company'],
     });
 
     return applications.map((app) => ({
@@ -293,6 +295,8 @@ export class ApplicationsService {
       amount: app.amount,
       loanType: app.loan_type,
       provider: app.provider,
+      companyId: app.company_id,
+      companyName: app.company?.name ?? 'Financial Freedom',
     }));
   }
 

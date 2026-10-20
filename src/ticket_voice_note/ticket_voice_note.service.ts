@@ -34,7 +34,7 @@ export class TicketVoiceNoteService {
       .createQueryBuilder('voiceNote')
       .where('voiceNote.ticket_id = :ticketId', { ticketId });
 
-    if (parsedCompanyId) {
+    if (parsedCompanyId && parsedCompanyId !== 101) {
       query.andWhere('voiceNote.company_id = :companyId', { companyId: parsedCompanyId });
     }
 
@@ -51,7 +51,7 @@ export class TicketVoiceNoteService {
     const parsedCompanyId = companyId ? parseInt(companyId, 10) : null;
 
     const whereCondition: any = { ticket_id };
-    if (parsedCompanyId) {
+    if (parsedCompanyId && parsedCompanyId !== 101) {
       whereCondition.company_id = parsedCompanyId;
     }
 
@@ -79,8 +79,8 @@ export class TicketVoiceNoteService {
       throw new NotFoundException(`Voice Note with id ${id} not found`);
     }
 
-    // Check if companyId matches (if provided)
-    if (parsedCompanyId && voiceNote.company_id !== parsedCompanyId) {
+    // Check if companyId matches (if provided, except company 101)
+    if (parsedCompanyId && parsedCompanyId !== 101 && voiceNote.company_id !== parsedCompanyId) {
       throw new ForbiddenException(
         'You do not have permission to delete this voice note',
       );

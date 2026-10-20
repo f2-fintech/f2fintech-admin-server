@@ -118,7 +118,7 @@ export class Application {
   company_id: number;
 
   @ManyToOne(() => Company, (company) => company.applications)
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({ name: 'company_id', referencedColumnName: 'companyId' })
   company: Company;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
