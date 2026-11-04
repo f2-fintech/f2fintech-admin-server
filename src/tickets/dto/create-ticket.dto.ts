@@ -45,7 +45,25 @@ export class CreateTicketDto {
   disbursed_at: Date;
 
   @IsNumber()
-  disbursed_amount: number;
+  @IsOptional()
+  disbursed_amount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  gross_disbursed_amount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  net_disbursed_amount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  abnd_amount?: number;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  abnd_at?: Date;
 
   @IsDate()
   @Type(() => Date)

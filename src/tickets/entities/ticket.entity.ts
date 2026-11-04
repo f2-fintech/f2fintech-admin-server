@@ -27,6 +27,7 @@ export enum Status {
   REJECTED = 'rejected',
   DROP = 'drop',
   HOLD = 'hold',
+  ABND = 'abnd',
 }
 
 @Entity('tickets')
@@ -97,6 +98,18 @@ export class Ticket {
 
   @Column({ type: 'decimal', nullable: true })
   disbursed_amount: number;
+
+  @Column({ type: 'decimal', nullable: true })
+  gross_disbursed_amount: number;
+
+  @Column({ type: 'decimal', nullable: true })
+  net_disbursed_amount: number;
+
+  @Column({ type: 'decimal', nullable: true })
+  abnd_amount: number;
+
+  @Column({ type: 'date', nullable: true })
+  abnd_at: Date;
 
   @Column({ type: 'date', nullable: true })
   approved_at: Date;
