@@ -23,6 +23,10 @@ export interface TicketResponse {
   employeeStatus: string;
   disbursed_at: Date | string;
   disbursed_amount: number | string;
+  gross_disbursed_amount?: number | string;
+  net_disbursed_amount?: number | string;
+  abnd_at?: Date | string;
+  abnd_amount?: number | string;
   approved_at: Date | string;
   approved_amount: number | string;
   cashback_amount: number | string;
@@ -72,6 +76,9 @@ export interface PaginationResult {
   count: number;
   pages: number;
   totalDisbursedAmount?: number;
+  totalGrossDisbursedAmount?: number;
+  totalNetDisbursedAmount?: number;
+  totalAbndAmount?: number;
   errorMessage?: string;
 }
 
@@ -339,12 +346,25 @@ export class TicketsService {
     }
     // console.log(query.getSql(), "queyyy>>", query.getParameters());
     const [tickets, count] = await query.getManyAndCount();
-    // Calculate total disbursed amount if status is 'disbursed'
+    // Calculate total disbursed and abnd amounts
     let totalDisbursedAmount = 0;
+    let totalGrossDisbursedAmount = 0;
+    let totalNetDisbursedAmount = 0;
+    let totalAbndAmount = 0;
+
     if (status === 'disbursed') {
-      totalDisbursedAmount = tickets.reduce((sum, ticket) => {
-        return sum + (parseFloat(String(ticket?.application?.amount || '0')));
-      }, 0);
+      tickets.forEach((ticket) => {
+        const gross = parseFloat(String(ticket?.gross_disbursed_amount || ticket?.disbursed_amount || ticket?.application?.amount || '0'));
+        const net = parseFloat(String(ticket?.net_disbursed_amount || ticket?.disbursed_amount || ticket?.application?.amount || '0'));
+        totalGrossDisbursedAmount += gross;
+        totalNetDisbursedAmount += net;
+        totalDisbursedAmount += gross;
+      });
+    } else if (status === 'abnd') {
+      tickets.forEach((ticket) => {
+        const abndAmt = parseFloat(String(ticket?.abnd_amount || ticket?.approved_amount || ticket?.application?.amount || '0'));
+        totalAbndAmount += abndAmt;
+      });
     }
 
     const results = tickets.map((ticket) => {
@@ -361,6 +381,10 @@ export class TicketsService {
         createdAt: ticket.created_at,
         disbursedAt: ticket.disbursed_at,
         disbursedAmount: ticket.disbursed_amount,
+        grossDisbursedAmount: ticket.gross_disbursed_amount ?? ticket.disbursed_amount,
+        netDisbursedAmount: ticket.net_disbursed_amount ?? ticket.disbursed_amount,
+        abndAt: ticket.abnd_at,
+        abndAmount: ticket.abnd_amount,
         approvedAt: ticket.approved_at,
         approvedAmount: ticket.approved_amount,
         approvedCashbackAmount: ticket.cashback_amount,
@@ -397,6 +421,10 @@ export class TicketsService {
 
     if (status === 'disbursed') {
       response.totalDisbursedAmount = totalDisbursedAmount;
+      response.totalGrossDisbursedAmount = totalGrossDisbursedAmount;
+      response.totalNetDisbursedAmount = totalNetDisbursedAmount;
+    } else if (status === 'abnd') {
+      response.totalAbndAmount = totalAbndAmount;
     }
     return response;
   }
@@ -451,6 +479,10 @@ export class TicketsService {
       employeeStatus: ticket.status,
       disbursed_at: ticket.disbursed_at,
       disbursed_amount: ticket.disbursed_amount,
+      gross_disbursed_amount: ticket.gross_disbursed_amount ?? ticket.disbursed_amount,
+      net_disbursed_amount: ticket.net_disbursed_amount ?? ticket.disbursed_amount,
+      abnd_at: ticket.abnd_at,
+      abnd_amount: ticket.abnd_amount,
       approved_at: ticket.approved_at,
       approved_amount: ticket.approved_amount,
       cashback_amount: ticket.cashback_amount,
@@ -501,6 +533,11 @@ export class TicketsService {
     const oldStatus = ticket.status;
     console.log("updateTicketDto", updateTicketDto.status, '=>', ticket.status);
 
+    // Sync disbursed_amount if gross_disbursed_amount is provided for compatibility
+    if (updateTicketDto.gross_disbursed_amount && !updateTicketDto.disbursed_amount) {
+      updateTicketDto.disbursed_amount = updateTicketDto.gross_disbursed_amount;
+    }
+
     Object.assign(ticket, updateTicketDto, { updatedAt: new Date() });
     const updatedTicket = await this.ticketRepository.save(ticket);
 
@@ -512,7 +549,9 @@ export class TicketsService {
     if (
       updateTicketDto.status === 'disbursed' &&
       updatedTicket.disbursed_amount &&
-      updatedTicket.disbursed_amount > 0
+      updatedTicket.disbursed_amount > 0 &&
+      updatedTicket.fixed_commission_percentage &&
+      Number(updatedTicket.fixed_commission_percentage) > 0
     ) {
       await this.triggerDisbursementCommission(updatedTicket.id);
     }
@@ -531,8 +570,14 @@ export class TicketsService {
       return { success: false, message: `Ticket ${ticketId} is not in disbursed status (current: ${ticket.status})` };
     }
 
-    if (!ticket.disbursed_amount || ticket.disbursed_amount <= 0) {
+    const hasDisbursedAmount = (ticket.net_disbursed_amount && ticket.net_disbursed_amount > 0) || (ticket.disbursed_amount && ticket.disbursed_amount > 0);
+    if (!hasDisbursedAmount) {
       return { success: false, message: `Ticket ${ticketId} has no valid disbursed amount` };
+    }
+
+    if (!ticket.fixed_commission_percentage || Number(ticket.fixed_commission_percentage) <= 0) {
+      console.log(`[COMMISSION SKIP] Ticket ${ticketId} has no valid fixed_commission_percentage (${ticket.fixed_commission_percentage}). Skipping commission trigger.`);
+      return { success: false, message: `Ticket ${ticketId} has no valid fixed commission percentage. Automatic commission calculation is disabled.` };
     }
 
     console.log(`[COMMISSION TRIGGER] Explicit trigger for ticket ${ticketId} with case_type: ${ticket.case_type}, cashback: ${ticket.cashback_amount}, fixed_commission: ${ticket.fixed_commission_percentage}`);
